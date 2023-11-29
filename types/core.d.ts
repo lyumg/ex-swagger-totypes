@@ -50,6 +50,7 @@ declare global {
     itemsType?: string
     default?: any
     items?: ParametersItems
+    in?: string
   }
 
   interface TreeInterface {

@@ -84,83 +84,87 @@ function parseProperties(
   if (!interfaceName) interfaceName = interfaceType
 
   if (Array.isArray(properties)) {
-    if (properties.length === 1 && properties[0].name === '____body_root_param____') {
-      let type = properties[0].type
+    const [itemProp] = properties
+    const isRootBodyParam = itemProp.name === '____body_root_param____'
+    const isFormData = itemProp.in === 'formData' && itemProp.type === 'file'
+    if (properties.length === 1 && (isRootBodyParam || isFormData)) {
+      let type = itemProp.type
+      if (type === 'file' && itemProp.in === 'formData') {
+        type = 'FormData'
+      }
       if (type === 'array') {
-        type = `${type === 'array' ? handleType(properties[0].items?.type) : type}[]`
+        type = `${type === 'array' ? handleType(itemProp.items?.type) : type}[]`
       }
 
-      const description: string = properties[0].description
-        ? `${indentationSpace}/** ${properties[0].description} */\n`
-        : ''
+      const description: string = itemProp.description ? `${indentationSpace}/** ${itemProp.description} */\n` : ''
 
       interfaceList.push(`${description}${indentationSpace}type ${interfaceName} = ${type}`, '')
       return interfaceList
     }
 
-    content = properties
-      .filter((item: any) => item.in !== 'path')
-      .map((v) => {
-        let type = handleType(v.type)
-        if (v.item) {
-          if (parentNames[v.name]) {
-            type = parentNames[v.name]
-          } else {
-            type = `${interfaceName}${toUp(v.name)}`
-            if (v.type === 'array') type = `${type}Item`
-            parentNames[v.name] = type
-            interfaceList.push(...parseProperties(interfaceType, type, data, v.item, indentation, parentNames))
-          }
+    content = properties.map((v) => {
+      let type = handleType(v.type)
+      if (v.item) {
+        if (parentNames[v.name]) {
+          type = parentNames[v.name]
+        } else {
+          type = `${interfaceName}${toUp(v.name)}`
+          if (v.type === 'array') type = `${type}Item`
+          parentNames[v.name] = type
+          interfaceList.push(...parseProperties(interfaceType, type, data, v.item, indentation, parentNames))
         }
+      }
 
-        try {
-          // @ts-ignore
-          if (!v.item.properties.length) type = 'Record<string, unknown>'
-        } catch (error) {
-          // console.warn(error)
-        }
+      try {
+        // @ts-ignore
+        if (!v.item.properties.length) type = 'Record<string, unknown>'
+      } catch (error) {
+        // console.warn(error)
+      }
 
-        if (v.enum) {
-          type = parseEnumToUnionType(v.enum)
-        } else if (v.items?.enum) {
-          type = parseEnumToUnionType(v.items.enum)
-        }
+      if (v.enum) {
+        type = parseEnumToUnionType(v.enum)
+      } else if (v.items?.enum) {
+        type = parseEnumToUnionType(v.items.enum)
+      }
 
-        if (v.type === 'array') {
-          if ((v.enum || v.items?.enum) && type !== 'any') {
-            type = `(${type})`
-          }
-          type = `${type === 'array' ? handleType(v.itemsType || 'any') : type}[]`
+      if (v.type === 'array') {
+        if ((v.enum || v.items?.enum) && type !== 'any') {
+          type = `(${type})`
         }
+        type = `${type === 'array' ? handleType(v.itemsType || 'any') : type}[]`
+      }
+      if (v.type === 'file' && v.in === 'formData') {
+        type = 'FormData'
+      }
+      let defaultValDesc = v.default || v.items?.default || ''
+      if (typeof defaultValDesc === 'object') {
+        defaultValDesc = JSON.stringify(defaultValDesc)
+      }
+      if (defaultValDesc) {
+        defaultValDesc = `[default:${defaultValDesc}]`
+      }
 
-        let defaultValDesc = v.default || v.items?.default || ''
-        if (typeof defaultValDesc === 'object') {
-          defaultValDesc = JSON.stringify(defaultValDesc)
-        }
-        if (defaultValDesc) {
-          defaultValDesc = `[default:${defaultValDesc}]`
-        }
+      let description: string = v.description || ''
+      if (defaultValDesc) {
+        description = description ? `${description} -- ${defaultValDesc}` : defaultValDesc
+      }
+      if (description) {
+        description = `${indentationSpace2}/** ${description} */\n`
+      }
 
-        let description: string = v.description || ''
-        if (defaultValDesc) {
-          description = description ? `${description} -- ${defaultValDesc}` : defaultValDesc
-        }
-        if (description) {
-          description = `${indentationSpace2}/** ${description} */\n`
-        }
+      let keyValue = `${v.name}${v.required ? ':' : '?:'} ${type}`
 
-        let keyValue = `${v.name}${v.required ? ':' : '?:'} ${type}`
+      if (interfaceType === 'Params' && templateConfig.paramsItem) {
+        const res = templateConfig.paramsItem(Object.assign({}, v, { type }), data)
+        if (res) keyValue = res
+      } else if (interfaceType === 'Response' && templateConfig.responseItem) {
+        const res = templateConfig.responseItem(Object.assign({}, v, { type }), data)
+        if (res) keyValue = res
+      }
 
-        if (interfaceType === 'Params' && templateConfig.paramsItem) {
-          const res = templateConfig.paramsItem(Object.assign({}, v, { type }), data)
-          if (res) keyValue = res
-        } else if (interfaceType === 'Response' && templateConfig.responseItem) {
-          const res = templateConfig.responseItem(Object.assign({}, v, { type }), data)
-          if (res) keyValue = res
-        }
-
-        return `${description}${indentationSpace2}${keyValue}`
-      })
+      return `${description}${indentationSpace2}${keyValue}`
+    })
   } else if (typeof properties === 'object') {
     let arr: TreeInterfacePropertiesItem[] = []
 
