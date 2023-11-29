@@ -85,7 +85,13 @@ export function parseSwaggerJson(
         }
       } else {
         // 忽略 headers
-        params = parameters.filter((x: any) => x.in !== 'header')
+        params = parameters.filter((x: any) => {
+          if (!isBody) {
+            const condition = templateConfig.isBodyParams ? templateConfig.isBodyParams(x) : x.in === 'formData'
+            isBody = condition
+          }
+          return x.in !== 'header'
+        })
       }
     }
 
