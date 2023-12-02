@@ -66,7 +66,6 @@ function parseResponse(data: TreeInterface, indentation = 0): string[] {
   // res.pop() // 删除多余空行
   return res
 }
-
 /** 解析详细属性 */
 function parseProperties(
   interfaceType: 'Params' | 'Response',
@@ -78,12 +77,31 @@ function parseProperties(
 ): string[] {
   const indentationSpace = handleIndentation(indentation) // 一级缩进
   const indentationSpace2 = handleIndentation(indentation + 1) // 二级缩进
-  const interfaceList = []
+  const interfaceList: string[] = []
   let content: string[] = []
 
   if (!interfaceName) interfaceName = interfaceType
 
   if (Array.isArray(properties)) {
+    if (properties.some((prop) => prop.in === 'path')) {
+      const props: TreeInterfacePropertiesItem[] = []
+      const pathProps: TreeInterfacePropertiesItem[] = []
+      properties.forEach((prop) => {
+        if (prop.in === 'path') {
+          pathProps.push(prop)
+        } else {
+          props.push(prop)
+        }
+      })
+      properties = props
+      pathProps.forEach((prop) => {
+        const description: string = prop.description ? `${indentationSpace}/** ${prop.description} */\n` : ''
+        interfaceList.push(`${description}${indentationSpace}type ${toUp(prop.name)} = ${handleType(prop.type)}`, '')
+      })
+    }
+    if (properties.length === 0) {
+      return interfaceList
+    }
     const [itemProp] = properties
     const isRootBodyParam = itemProp.name === '____body_root_param____'
     const isFormData = itemProp.in === 'formData' && itemProp.type === 'file'

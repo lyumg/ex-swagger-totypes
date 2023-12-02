@@ -90,7 +90,7 @@ export function parseSwaggerJson(
             const condition = templateConfig.isBodyParams ? templateConfig.isBodyParams(x) : x.in === 'formData'
             isBody = condition
           }
-          return x.in !== 'header' && x.in !== 'path'
+          return x.in !== 'header'
         })
       }
     }
