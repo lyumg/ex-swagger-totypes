@@ -163,7 +163,7 @@ function parseProperties(
         defaultValDesc = `[default:${defaultValDesc}]`
       }
 
-      let description: string = v.description || ''
+      let description: string = v.description || v.title || ''
       if (defaultValDesc) {
         description = description ? `${description} -- ${defaultValDesc}` : defaultValDesc
       }

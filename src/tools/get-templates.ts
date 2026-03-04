@@ -2,7 +2,7 @@ import path from 'path'
 import fs from 'fs'
 import vscode from 'vscode'
 
-import { WORKSPACE_PATH, TEMPLATE_FILE_NAME, CONFIG_GROUP, config, requireModule, localize } from '../tools'
+import { WORKSPACE_PATH, TEMPLATE_FILE_NAME, CONFIG_GROUP } from '../tools'
 
 export interface TemplateParserParams {
   defaultName: string
@@ -21,14 +21,18 @@ export interface TemplateBaseType {
 
 export let templateConfig: TemplateBaseType = {}
 
-const workspaceConfigPath = path.join(WORKSPACE_PATH || '', '.vscode', TEMPLATE_FILE_NAME)
+let workspaceConfigPath = path.join(WORKSPACE_PATH || '', '.vscode', TEMPLATE_FILE_NAME)
+if (!fs.existsSync(`${workspaceConfigPath}.js`)) {
+  workspaceConfigPath = `${workspaceConfigPath}.cjs`
+}
 
 /** 获取工作区模板配置 */
-export function getWorkspaceTemplateConfig(): TemplateBaseType {
-  if (fs.existsSync(workspaceConfigPath)) {
-    templateConfig = requireModule(workspaceConfigPath)
+export async function getWorkspaceTemplateConfig(): Promise<TemplateBaseType> {
+  if (!fs.existsSync(workspaceConfigPath)) {
+    return templateConfig
   }
-
+  const res = await import(workspaceConfigPath)
+  templateConfig = res.default || res
   if (templateConfig.copyRequest) {
     vscode.commands.executeCommand('setContext', `${CONFIG_GROUP}.hasCopyRequestFn`, 1)
   } else {

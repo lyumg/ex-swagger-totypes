@@ -7,7 +7,6 @@ import {
   registerCommonCommands,
   registerListCommands,
   registerLocalCommands,
-  registerTemplateCommands,
 } from './commands'
 
 let viewList: ViewList
@@ -26,7 +25,6 @@ export function activate(ctx: vscode.ExtensionContext) {
   registerCommonCommands(viewList, viewLocal)
   registerListCommands({ viewList, viewLocal, listTreeView, localTreeView })
   registerLocalCommands(viewList, viewLocal)
-  registerTemplateCommands()
 
   // 监听 settings.json 文件变更
   if (reloadWhenSettingsChanged) {
